@@ -1,0 +1,65 @@
+/**
+ * As best practice, define here all plugins with their version and `apply false` and reuse them in submodules.
+ * Also, each module shall import its dependencies separately.
+ */
+
+plugins {
+    id('org.jetbrains.kotlin.jvm') version "$kotlin_version" apply false
+
+    // Apply to all projects, used to check unused dependencies, run `./gradlew lintGradle` to check dependencies.
+    // Be aware that automatic fixing with `fixLintGradle` might break something.
+    id('nebula.lint') version "17.1.0"
+}
+
+// Do not add dependencies here! Bad practice
+allprojects {
+    group 'it.stefanosonzogni'
+    gradleLint.rules = ['all-dependency']
+    gradleLint.alwaysRun = false
+}
+
+class UpdateVersion extends DefaultTask {
+    private String tag
+
+    @Option(option = "tag", description = "Updates the project version with specified tag (when supplying the tag do not include the initial v).")
+    void setTag(String tag) {
+        this.tag = tag
+    }
+
+    @Input
+    String getTag() {
+        return tag
+    }
+
+    @TaskAction
+    void print() {
+        getLogger().quiet("Updating files to version $tag")
+        String oldTag = project.version
+
+        getLogger().quiet("Updating build.gradle file")
+        String updatedBuildGradle = project.buildFile.getText().replaceFirst("version '$oldTag'", "version '$tag'")
+        project.buildFile.setText(updatedBuildGradle)
+
+        getLogger().quiet("Updating Changelog and Dockerfile")
+        runCommand("./scripts/update-changelog.sh", tag)
+
+        getLogger().quiet("Commit and tag creation on local repository")
+        String tagName = "v${tag}"
+        runCommand("git", "commit", "-a", "-m", tagName)
+        runCommand("git", "tag", tagName)
+    }
+
+    static String runCommand(String... commands) {
+        Process process = new ProcessBuilder(commands).redirectErrorStream(true).start()
+        process.waitFor()
+        String result = ''
+        process.inputStream.eachLine { result += it + '\n' }
+        boolean error = process.exitValue() != 0
+        if (error) {
+            println(result)
+        }
+        return result
+    }
+}
+//to execute the task: ./gradlew version --tag=[version]
+task version(type: UpdateVersion)

@@ -1,0 +1,12 @@
+rootProject.name = 'kotlin-kafka-lib'
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven { url 'https://jitpack.io' } // for papsign ktor open api generator
+    }
+}
+
+include 'kafka-lib'
+include 'service-lib'
+include 'sandbox'
