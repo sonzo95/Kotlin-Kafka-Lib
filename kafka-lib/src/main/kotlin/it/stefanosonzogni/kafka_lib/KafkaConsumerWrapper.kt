@@ -1,5 +1,7 @@
 package it.stefanosonzogni.kafka_lib
 
+import it.stefanosonzogni.kafka_lib.consumer.processingstrategies.RecordProcessingStrategy
+import it.stefanosonzogni.kafka_lib.consumer.processingstrategies.SimpleProcessingStrategy
 import kotlinx.coroutines.runBlocking
 import net.logstash.logback.argument.StructuredArguments
 import org.apache.kafka.clients.consumer.Consumer
@@ -19,6 +21,7 @@ import java.util.concurrent.locks.ReentrantLock
 class KafkaConsumerWrapper<K, V> private constructor(
     private val topics: List<String>,
     private val processor: IKafkaProcessor<K, V>,
+    private val recordProcessingStrategy: RecordProcessingStrategy<K, V>,
     private val config: Config,
     private val consumer: Consumer<K, V>,
     private val clock: Clock = Clock.systemDefaultZone()
@@ -70,7 +73,7 @@ class KafkaConsumerWrapper<K, V> private constructor(
                         break
                     }
                     if(record != null)
-                        handleRecord(record)
+                        recordProcessingStrategy.handleRecord(record, processor)
                     lastProcessedTopic = record.topic()
                     lastProcessedPartition = record.partition()
                     lastProcessedOffset = record.offset()
@@ -106,32 +109,6 @@ class KafkaConsumerWrapper<K, V> private constructor(
         runningLock.unlock()
     }
 
-    private fun handleRecord(record: ConsumerRecord<K, V>) {
-        var attemptsLeft = config.processingRetriesLimit + 1
-        var success = false
-        while (attemptsLeft > 0 && !success) {
-            try {
-                runBlocking { processor.process(record) }
-                success = true
-            } catch (e: Exception) {
-                log.debug("Record processing ended with error",
-                    StructuredArguments.keyValue("topic", record.topic()),
-                    StructuredArguments.keyValue("record key", record.key()),
-                    StructuredArguments.keyValue("error", e.localizedMessage)
-                )
-                attemptsLeft--
-                Thread.sleep(config.processingRetriesDelayMs)
-            }
-        }
-        if (!success) {
-            log.error("Record processing failed",
-                StructuredArguments.keyValue("topic", record.topic()),
-                StructuredArguments.keyValue("record key", record.key()),
-                StructuredArguments.keyValue("record value", record.value())
-            )
-        }
-    }
-
     override fun stop() {
         running = false
     }
@@ -159,8 +136,6 @@ class KafkaConsumerWrapper<K, V> private constructor(
     // Config
 
     data class Config(
-        val processingRetriesLimit: Int = 0,
-        val processingRetriesDelayMs: Long = 100,
         val minIntervalBetweenPollsMs: Long = 0
     )
 
@@ -177,6 +152,7 @@ class KafkaConsumerWrapper<K, V> private constructor(
             private var processor: IKafkaProcessor<K, V>? = null
             private var config: Config = Config()
             private var consumerImpl: Consumer<K, V>? = null
+            private var recordProcessingStrategy: RecordProcessingStrategy<K, V> = SimpleProcessingStrategy()
 
             init {
                 properties["bootstrap.servers"] = brokers
@@ -227,6 +203,10 @@ class KafkaConsumerWrapper<K, V> private constructor(
                 this.processor = processor
             }
 
+            fun withRecordProcessingStrategy(strategy: RecordProcessingStrategy<K, V>) = apply {
+                this.recordProcessingStrategy = strategy
+            }
+
             fun withConfig(config: Config) = apply { this.config = config }
 
             fun withKafkaConsumerImpl(consumer: Consumer<K, V>) = apply { consumerImpl = consumer }
@@ -239,7 +219,7 @@ class KafkaConsumerWrapper<K, V> private constructor(
                     throw KafkaBuilderException("No processor given, use `withProcessor`")
                 }
                 val consumer = consumerImpl ?: KafkaConsumer(properties)
-                return KafkaConsumerWrapper(topics!!, processor!!, config, consumer)
+                return KafkaConsumerWrapper(topics!!, processor!!, recordProcessingStrategy, config, consumer)
             }
         }
     }
