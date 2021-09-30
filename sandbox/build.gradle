@@ -1,5 +1,13 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm'
+    id "org.jetbrains.kotlin.jvm"
+}
+
+dependencies {
+    implementation(project(":kafka-lib"))
+    implementation(project(":service-lib"))
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation('org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0')
 }
 
 test {
@@ -11,8 +19,8 @@ jar {
 
     manifest {
         attributes(
-                'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.join(' '),
-                'Main-Class': 'eu.miaplatform.nen.communication_request_processor.ServiceApplicationKt'
+            'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.join(' '),
+            'Main-Class': 'it.stefanosonzogni.sandbox.Application'
         )
     }
 
