@@ -4,6 +4,7 @@ import kotlinx.coroutines.*
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.TopicDescription
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class KafkaHealthClient private constructor(
     props: Properties
@@ -14,8 +15,8 @@ class KafkaHealthClient private constructor(
         val description = adminClient.describeCluster()
         return withContext(Dispatchers.IO) {
             try {
-                val clusterId = description.clusterId().get()
-                val nodes = description.nodes().get()
+                val clusterId = description.clusterId().get(5, TimeUnit.SECONDS)
+                val nodes = description.nodes().get(5, TimeUnit.SECONDS)
 
                 return@withContext if (nodes.isNotEmpty())
                     Result.success(
