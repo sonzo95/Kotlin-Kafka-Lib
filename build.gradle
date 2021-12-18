@@ -11,6 +11,9 @@ plugins {
     id('nebula.lint') version "17.1.0"
 }
 
+// Do not delete, this will get updated automatically when running the version command
+version '0.0.1'
+
 // Do not add dependencies here! Bad practice
 allprojects {
     group 'it.stefanosonzogni'

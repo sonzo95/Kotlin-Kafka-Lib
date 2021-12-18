@@ -1,4 +1,4 @@
-package it.stefanosonzogni.kafka_lib.health
+package it.stefanosonzogni.kafka_lib.health.models
 
 import org.apache.kafka.common.Node
 

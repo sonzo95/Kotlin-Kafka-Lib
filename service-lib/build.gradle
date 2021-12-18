@@ -3,28 +3,37 @@ plugins {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation libs.bundles.impl.kotlin
+    implementation libs.bundles.impl.ktor
+    testImplementation libs.bundles.testImpl.ktor
+    implementation libs.bundles.impl.logback
+    implementation libs.bundles.impl.jackson
 
-    implementation "io.ktor:ktor-server-netty:$ktor_version"
-    implementation "io.ktor:ktor-jackson:$ktor_version"
-
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    implementation group: 'net.logstash.logback', name: 'logstash-logback-encoder', version: '6.0'
-
-
-    implementation "com.squareup.okhttp3:logging-interceptor:4.9.1"
-
-    implementation "com.fasterxml.jackson.core:jackson-databind:$jackson_version"
-    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:$jackson_version"
-
-    testImplementation "org.junit.jupiter:junit-jupiter-api:$junit_version"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junit_version"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:$junit_version"
-
-    testImplementation 'io.mockk:mockk:1.12.0'
-    testImplementation 'com.willowtreeapps.assertk:assertk:0.24'
+    testImplementation libs.bundles.testImpl.testSuite
 }
 
 test {
     useJUnitPlatform()
 }
+
+def generatedVersionDir = "${buildDir}/generated-version"
+
+sourceSets {
+    main {
+        output.dir(generatedVersionDir, builtBy: 'generateVersionProperties')
+    }
+}
+
+task generateVersionProperties {
+    doLast {
+        def propsFile = file "$generatedVersionDir/version.properties"
+        propsFile.parentFile.mkdirs()
+        def props = new Properties()
+        print(rootProject.version.toString())
+        props.setProperty("version", rootProject.version.toString())
+        propsFile.withWriter { props.store(it, null) }
+    }
+}
+processResources.dependsOn generateVersionProperties
+build.dependsOn generateVersionProperties
+

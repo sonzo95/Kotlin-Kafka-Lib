@@ -1,5 +1,6 @@
 package it.stefanosonzogni.kafka_lib.health
 
+import it.stefanosonzogni.kafka_lib.health.models.DescribeClusterResponse
 import kotlinx.coroutines.*
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.TopicDescription

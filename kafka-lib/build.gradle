@@ -2,24 +2,39 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
 }
 
+dependencies {
+    api(project(":service-lib"))
+    api group: 'org.apache.kafka', name: 'kafka-clients', version: '3.0.0'
+
+    implementation libs.bundles.impl.kotlin
+    implementation libs.bundles.impl.logback
+    implementation libs.bundles.impl.jackson
+
+    testImplementation libs.bundles.testImpl.testSuite
+}
+
 test {
     useJUnitPlatform()
 }
 
-dependencies {
-    api(project(":service-lib"))
+def generatedVersionDir = "${buildDir}/generated-version"
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation('org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0')
-
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    implementation group: 'net.logstash.logback', name: 'logstash-logback-encoder', version: '6.0'
-    api group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
-
-    testImplementation "org.junit.jupiter:junit-jupiter-api:$junit_version"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junit_version"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:$junit_version"
-
-    testImplementation 'io.mockk:mockk:1.12.0'
-    testImplementation 'com.willowtreeapps.assertk:assertk:0.24'
+sourceSets {
+    main {
+        output.dir(generatedVersionDir, builtBy: 'generateVersionProperties')
+    }
 }
+
+task generateVersionProperties {
+    doLast {
+        def propsFile = file "$generatedVersionDir/version.properties"
+        propsFile.parentFile.mkdirs()
+        def props = new Properties()
+        print(rootProject.version.toString())
+        props.setProperty("version", rootProject.version.toString())
+        propsFile.withWriter { props.store(it, null) }
+    }
+}
+processResources.dependsOn generateVersionProperties
+build.dependsOn generateVersionProperties
+
